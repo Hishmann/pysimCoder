@@ -147,7 +147,7 @@ int pysim_can_target_register(struct pysim_can_ops *ops) {
 
   *(volatile uint32_t *)(0x43C10000) = 0x01000000;
 
-  bus1->chip = rtems_ctucanfd_initialize(
+  bus1->chip = rtems_can_ctucanfd_initialize(
     0x43c30000,
     61,
     CTUCANFD_WORKER_PRIORITY,
@@ -160,7 +160,7 @@ int pysim_can_target_register(struct pysim_can_ops *ops) {
     return -1;
   }
 
-  bus2->chip = rtems_ctucanfd_initialize(
+  bus2->chip = rtems_can_ctucanfd_initialize(
     0x43c70000,
     62,
     CTUCANFD_WORKER_PRIORITY,

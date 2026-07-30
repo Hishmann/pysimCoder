@@ -62,6 +62,7 @@ LIB += $(wildcard $(LIBDIR)/libshvtree.a)
 LIB += $(wildcard $(LIBDIR)/libshvchainpack.a)
 LIB += $(wildcard $(LIBDIR)/libulut.a)
 SYSTEM_LIBS = -lftpfs -ltftpfs -lbsd -lm
+# SYSTEM_LIBS = -lftpfs -ltftpfs -lm
 
 $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 	cp $< .

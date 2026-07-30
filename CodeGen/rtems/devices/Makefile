@@ -43,6 +43,8 @@ ifneq ($(wildcard $(RTEMS_ROOT)/$(RTEMS_TARGET)/$(RTEMS_BSP)/lib/include/dev/can
 SRCALL += can.c
 endif
 
+SRCALL += mz_apo_ENC.c mz_apo_LED.c mz_apo_DCmot.c
+
 OBJ = $(notdir $(SRCALL:.c=.o))
 
 CWD = $(shell pwd)
