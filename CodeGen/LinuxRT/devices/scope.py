@@ -5,7 +5,7 @@ import os
 import socket
 import numpy as np
 
-from PyQt5 import QtWidgets, QtCore
+from supsisim.qtvers import *
 import pyqtgraph as pg
 
 COL = 170
