@@ -505,7 +505,7 @@ class Scene(QGraphicsScene):
         return items
 
     def codegen(self, flag):
-        def _parseAddCDefs(addCDefs: str) -> str:
+        def _parseAddDefs(addCDefs: str, defFormatFunc) -> str:
             ret = ''
             # the splitter is a comma, then check the syntax
             addCDefs = addCDefs.strip()
@@ -523,13 +523,17 @@ class Scene(QGraphicsScene):
                 if not re.fullmatch("[0-9a-zA-Z_]+", left):
                     # the macro contains forbidden characters
                     raise ValueError("Bad format of additional build args!")
-                ret += "\\\'-D" + str(left) + '=' + str(right) + "\\\' "
+                ret += defFormatFunc(str(left), str(right))
             return ret
+
+        CDefFormatFunc = lambda l, r : "\\\'-D" + l + '=' + r + "\\\' "
+        MakeArgFormatFunc = lambda l, r : l + '=' + r + " "
 
         # REVISIT: might check all passed arguments in the dialog.
 
         try:
-            self.parsedAddCDefs = _parseAddCDefs(self.addCDefs)
+            self.parsedAddCDefs = _parseAddDefs(self.addCDefs, CDefFormatFunc)
+            self.parsedAddMakeArgs = _parseAddDefs(self.addMakeArgs, MakeArgFormatFunc)
         except ValueError as e:
             print(e)
             self.mainw.statusLabel.setText('Error by Code generation!')
@@ -763,7 +767,7 @@ class Scene(QGraphicsScene):
             fn.write('genCode(fname, ' + self.Ts + ', blks, ' + "'" + self.intgMethod + "', " + \
                     self.epsAbs + ', ' + self.epsRel +')\n')
             fn.write("genMake(fname, '" + self.template + "', addObj = '" +
-                  self.addObjs + "', addCDefs = '" + self.parsedAddCDefs + "')\n")
+                  self.addObjs + "', addCDefs = '" + self.parsedAddCDefs + "', addMakeArgs= '" + self.parsedAddMakeArgs + "')\n")
             fn.write('\nimport os\n')
             fn.write('os.system("make clean")\n')
             fn.write('if (os.system("make")) != 0:\n')
