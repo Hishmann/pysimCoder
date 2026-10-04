@@ -5,3 +5,4 @@ devices/_build
 devices/_compiled
 devices/libpyblk.a
 include-generated
+bsp
