@@ -1,6 +1,14 @@
 MODEL = $$MODEL$$
 ADDITIONAL_DEFINES = $$ADDITIONAL_DEFINES$$
-all: ../$(MODEL)
+ADDITIONAL_MAKE_ARGS = $$ADDITIONAL_MAKE_ARGS$$
+all: dependencies ../$(MODEL) 
+
+# Testing log
+$(info ADDITIONAL_C_DEFINES=$(ADDITIONAL_DEFINES))
+$(info ADDITIONAL_MAKE_ARGUMENTS=$(ADDITIONAL_MAKE_ARGS))
+
+# Realizes the additonal make arguments
+$(foreach arg,$(ADDITIONAL_MAKE_ARGS),$(eval $(arg)))
 
 # Enable or define during make invocation to embed content of the specified
 # directory into ROM filesystem mounted into /etc on the target
@@ -8,16 +16,17 @@ all: ../$(MODEL)
 
 PYCODEGEN = $(PYSUPSICTRL)/CodeGen
 MAINDIR = $(PYCODEGEN)/src
-LIBDIR  = $(PYCODEGEN)/rtems/lib
 INCDIR  = $(PYCODEGEN)/rtems/include
-RTEMS_MAKEFILE_PATH=/opt/rtems/7/arm-rtems7/xilinx_zynq_zedboard
 COMMON_INCDIR = $(PYCODEGEN)/Common/include
 
 SHV_INC = $(PYCODEGEN)/Common/shv/include
-GENERATED_INC = $(PYCODEGEN)/nuttx/include-generated
 
 RM = rm -f
 FILES_TO_CLEAN = *.o $(MODEL) $(MAIN)-builtintab.c
+
+# RTEMS makefile path examples
+#	RTEMS_MAKEFILE_PATH=/opt/rtems/7/i386-rtems7/pc686
+#	RTEMS_MAKEFILE_PATH=/opt/rtems/7/arm-rtems7/xilinx_zynq_zedboard
 
 ifndef RTEMS_MAKEFILE_PATH
 $(warning Specify RTEMS_MAKEFILE_PATH)
@@ -42,6 +51,17 @@ ifndef OPT_OPTS
 OPT_OPTS = $(DEFAULT_OPT_OPTS)
 endif
 
+BSP_NAME := $(notdir $(patsubst %/,%,$(RTEMS_MAKEFILE_PATH)))
+BSP_FOLDER = $(PYCODEGEN)/rtems/bsp
+BSP_LIB_OUT = $(BSP_FOLDER)/$(BSP_NAME)/lib
+BSP_GENERATED_INC = $(BSP_FOLDER)/$(BSP_NAME)/include-generated
+
+GENERATED_INC := $(BSP_GENERATED_INC)
+LIBDIR := $(BSP_LIB_OUT)
+
+dependencies:
+	$(MAKE) -C $(PYCODEGEN)/rtems/devices all SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
+
 MAIN = rtems_main
 ADD_FILES = $$ADD_FILES$$
 
@@ -63,6 +83,7 @@ LIB += $(wildcard $(LIBDIR)/libshvchainpack.a)
 LIB += $(wildcard $(LIBDIR)/libulut.a)
 SYSTEM_LIBS = -lftpfs -ltftpfs -lbsd -lm
 
+
 $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 	cp $< .
 
@@ -77,3 +98,4 @@ $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 
 clean:
 	@$(RM) $(FILES_TO_CLEAN)
+	$(MAKE) -C $(PYCODEGEN)/rtems/devices clean SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
