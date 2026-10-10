@@ -410,7 +410,7 @@ def genCode(model, Tsamp, blocks, rkMethod='standard_RK4', epsAbs = 1e-6, epsRel
     f.write('}\n\n')
     f.close()
 
-def genMake(model, template, addObj = '', addCDefs = ''):
+def genMake(model, template, addObj = '', addCDefs = '', addMakeArgs = ''):
     """Generate the Makefile
 
     Call: genMake(model, template)
@@ -421,7 +421,8 @@ def genMake(model, template, addObj = '', addCDefs = ''):
     template  : Template makefile
     addObj    : Additional object files
     addCDefs  : Additional C Defines
-
+    addMakeArgs : Additional Make Defines
+    
     Returns
     -------
     -
@@ -441,6 +442,7 @@ def genMake(model, template, addObj = '', addCDefs = ''):
             addCDefs += ' \'-DCONF_SHV_UPDATES_USED\''
 
     mf = mf.replace('$$ADDITIONAL_DEFINES$$', addCDefs)
+    mf = mf.replace('$$ADDITIONAL_MAKE_ARGS$$', addMakeArgs)
     f = open('Makefile','w')
     f.write(mf)
     f.close()
