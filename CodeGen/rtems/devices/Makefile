@@ -123,9 +123,6 @@ $(BSP_BUILD_OUTPUT)/%.o: $(COMMON_DIR)/shv/%.c
 	$(CC) $(CC_FLAGS) $< -o $@
 endif
 
-$(BSP_BUILD_OUTPUT)/%.o: $(COMMON_DIR)/shv/%.c
-	$(CC) $(CC_FLAGS) $< -o $@
-
 $(BSP_BUILD_OUTPUT)/%.o: $(COMMON_DIR)/CAN_dev/%.c
 	$(CC) $(CC_FLAGS) $< -o $@
 
@@ -155,3 +152,4 @@ install:
 clean:
 	@echo "RM: lib/*.a bsp"
 	@rm -rf $(LIBDIR)/*.a $(BSP_FOLDER)
+

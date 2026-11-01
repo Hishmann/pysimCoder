@@ -27,6 +27,7 @@ FILES_TO_CLEAN = *.o $(MODEL) $(MAIN)-builtintab.c
 # RTEMS makefile path examples
 #	RTEMS_MAKEFILE_PATH=/opt/rtems/7/i386-rtems7/pc686
 #	RTEMS_MAKEFILE_PATH=/opt/rtems/7/arm-rtems7/xilinx_zynq_zedboard
+#	RTEMS_MAKEFILE_PATH=/opt/rtems/7/arm-rtems7/xilinx_zynq_a9_qemu
 
 ifndef RTEMS_MAKEFILE_PATH
 $(warning Specify RTEMS_MAKEFILE_PATH)
@@ -59,8 +60,8 @@ BSP_GENERATED_INC = $(BSP_FOLDER)/$(BSP_NAME)/include-generated
 GENERATED_INC := $(BSP_GENERATED_INC)
 LIBDIR := $(BSP_LIB_OUT)
 
-dependencies:
-	$(MAKE) -C $(PYCODEGEN)/rtems/devices all SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
+# dependencies: $(LIB)
+# 	$(MAKE) -C $(PYCODEGEN)/rtems/devices all SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
 
 MAIN = rtems_main
 ADD_FILES = $$ADD_FILES$$
@@ -83,6 +84,8 @@ LIB += $(wildcard $(LIBDIR)/libshvchainpack.a)
 LIB += $(wildcard $(LIBDIR)/libulut.a)
 SYSTEM_LIBS = -lftpfs -ltftpfs -lbsd -lm
 
+dependencies:
+	$(MAKE) -C $(PYCODEGEN)/rtems/devices all SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
 
 $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 	cp $< .
@@ -98,4 +101,3 @@ $(MAIN).c: $(MAINDIR)/$(MAIN).c $(MODEL).c
 
 clean:
 	@$(RM) $(FILES_TO_CLEAN)
-	$(MAKE) -C $(PYCODEGEN)/rtems/devices clean SHV=1 RTEMS_MAKEFILE_PATH=$(RTEMS_MAKEFILE_PATH)
