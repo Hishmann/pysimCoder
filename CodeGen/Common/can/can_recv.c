@@ -1,5 +1,6 @@
 /*
 COPYRIGHT (C) 2024 Michal Lenc (michallenc@seznam.cz)
+COPYRIGHT (C) 2026 Ahmad Hisham (ahmadhisham25656@gmail.com)
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -22,29 +23,55 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <candev.h>
 
-static int fd;
 
 static void init(python_block *block) {
-  pysim_can_initialize();
+  block->ptrPar = NULL;
 
-  fd = pysim_can_open("dev/can1");
+  if (pysim_can_initialize() != 0) {
+    return;
+  }
 
-  pysim_can_register_msg(0x10);
+  struct can_block_ctx *ctx = malloc(sizeof(*ctx));
+  if (ctx == NULL) {
+    return;
+  }
+
+  char* dev_node = block -> str;
+  ctx->fd = pysim_can_open(dev_node);
+  if (ctx->fd < 0) {
+    printf("%s open failed %d\n", dev_node, ctx->fd);
+    free(ctx);
+    return;
+  }
+
+  block->ptrPar = ctx;
+  uint32_t ide = block->intPar[0];
+  pysim_can_register_msg(ctx->fd, ide);
 }
 
 static void inout(python_block *block) {
+  struct can_block_ctx *ctx = block->ptrPar;
+  if (ctx == NULL) {
+    return;
+  }
+
   uint8_t data[64];
   uint16_t len;
+  uint32_t ide = block->intPar[0];
 
-  pysim_can_read_msg(0x10, &len, data);
-  printf("0x10: ");
-  for (int i = 0; i < len; i++) {
-    printf("%02x ", data[i]);
-  }
-  printf("\n");
+  int result = pysim_can_read_msg(ctx->fd, ide, &len, data);
+  if (result != 0) return;
+  if (len != sizeof(double)) return;  // Unexpected payload size
+
+  double value;
+  memcpy(&value, data, sizeof(value));
+
+  double *y = block->y[0];
+  y[0] = value;
 }
 
 static void end(python_block *block) {

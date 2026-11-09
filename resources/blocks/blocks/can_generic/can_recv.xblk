@@ -6,6 +6,6 @@
   "stin": 0,
   "stout": 0,
   "icon": "CAN_GEN_RECV",
-  "params": "can_recvBlk",
+  "params": "can_recvBlk|Can dev:'/dev/can1':str|IDE: 0x01:int|Bits: [8,0]:int|Data type: [0,0]:int",
   "help": ""
 }

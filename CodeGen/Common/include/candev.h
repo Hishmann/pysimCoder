@@ -1,5 +1,6 @@
 /*
   COPYRIGHT (C) 2024 Michal Lenc (michallenc@seznam.cz)
+  COPYRIGHT (C) 2026 Ahmad Hisham (ahmadhisham25656@gmail.com)
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -22,17 +23,24 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct can_block_ctx {
+  int fd;
+};
+
 struct pysim_can_ops {
   int (*open_device)(char *devpath);
   int (*send_frame)(int fd, uint32_t id, uint16_t len, uint8_t data[]);
   int (*close_device)(int fd);
+  void (*lock_rx)(void);
+  bool (*try_lock_rx)(void);
+  void (*unlock_rx)(void);
 };
 
 int pysim_can_initialize(void);
 int pysim_can_open(char *devpath);
-int pysim_can_register_msg(uint32_t id);
+int pysim_can_register_msg(int fd, uint32_t id);
 int pysim_can_add_new_msg(int fd, uint32_t id, uint16_t len, uint8_t data[]);
-int pysim_can_read_msg(uint32_t id, uint16_t *len, uint8_t data[]);
+int pysim_can_read_msg(int fd, uint32_t id, uint16_t *len, uint8_t data[]);
 int pysim_can_send_msg(int fd, uint32_t id, uint16_t len, uint8_t data[]);
 
 int pysim_can_target_register(struct pysim_can_ops *ops);

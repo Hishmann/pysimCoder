@@ -1,5 +1,6 @@
 /*
   COPYRIGHT (C) 2024 Michal Lenc (michallenc@seznam.cz)
+  COPYRIGHT (C) 2026 Ahmad Hisham (ahmadhisham25656@gmail.com)
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -46,6 +47,7 @@
 #endif
 
 static bool initialized = false;
+static rtems_id can_rx_sem;
 
 static struct rtems_can_set_bittiming set_nominal_bittiming = {
   .type = RTEMS_CAN_BITTIME_NOMINAL,
@@ -62,6 +64,32 @@ static struct rtems_can_set_bittiming set_data_bittiming = {
     .bitrate = 2000000,
   }
 };
+
+static void rtems_lock_rx(void) {
+  rtems_status_code status = rtems_semaphore_obtain(can_rx_sem, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+	if (status != RTEMS_SUCCESSFUL) {
+		rtems_fatal_error_occurred(status);
+	}
+}
+
+static void rtems_unlock_rx(void) {
+  rtems_status_code status = rtems_semaphore_release(can_rx_sem);
+	if (status != RTEMS_SUCCESSFUL) {
+		rtems_fatal_error_occurred(status);
+	}
+}
+
+static bool rtems_try_lock_rx(void) {
+  rtems_status_code status = rtems_semaphore_obtain(can_rx_sem, RTEMS_NO_WAIT, 0);
+  if (status == RTEMS_SUCCESSFUL) {
+    return true;
+  }
+  if (status == RTEMS_UNSATISFIED) {
+    return false;  /* Another task holds the semaphore. */
+  }
+  rtems_fatal_error_occurred(status);
+  return false;
+}
 
 rtems_task rtems_can_receiver(rtems_task_argument arg) {
   struct can_frame frame;
@@ -185,9 +213,23 @@ int pysim_can_target_register(struct pysim_can_ops *ops) {
     return -1;
   }
 
+	rtems_status_code status = rtems_semaphore_create(
+    rtems_build_name('C', 'A', 'N', 'S'),
+    1,
+    RTEMS_LOCAL | RTEMS_BINARY_SEMAPHORE | RTEMS_PRIORITY | RTEMS_INHERIT_PRIORITY,
+    0,
+    &can_rx_sem
+	);
+	if (status != RTEMS_SUCCESSFUL) {
+		rtems_fatal_error_occurred(status);
+	}
+
   ops->send_frame = rtems_send_frame;
   ops->close_device = rtems_close_device;
   ops->open_device = rtems_open_device;
+	ops->lock_rx = rtems_lock_rx;
+	ops->unlock_rx = rtems_unlock_rx;
+	ops->try_lock_rx = rtems_try_lock_rx;
 
   initialized = true;
 

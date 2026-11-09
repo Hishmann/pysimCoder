@@ -1,5 +1,6 @@
 /*
   COPYRIGHT (C) 2024 Michal Lenc (michallenc@seznam.cz)
+  COPYRIGHT (C) 2026 Ahmad Hisham (ahmadhisham25656@gmail.com)
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -31,6 +32,7 @@
 bool initialized = false;
 
 struct pysim_can_msg {
+  int fd;
   uint32_t id;
   uint16_t dlc;
   uint16_t read;
@@ -41,48 +43,59 @@ struct pysim_can_msg {
 static struct pysim_can_ops can_ops;
 struct pysim_can_msg *can_msg_rx = NULL;
 
-int pysim_can_register_msg(uint32_t id) {
+int pysim_can_register_msg(int fd, uint32_t id) {
   struct pysim_can_msg *msg = (struct pysim_can_msg *)malloc(sizeof(struct pysim_can_msg));
   if (msg == NULL) {
     return ENOMEM;
   }
-  msg->next = can_msg_rx;
-  can_msg_rx = msg;
+
+  msg->fd = fd;
   msg->id = id;
   memset(msg->data, 0, sizeof(*msg->data));
   msg->read = 0;
   msg->dlc = 0;
 
+  can_ops.lock_rx();
+  msg->next = can_msg_rx;
+  can_msg_rx = msg;
+  can_ops.unlock_rx();
+
   return 0;
 }
 
 int pysim_can_add_new_msg(int fd, uint32_t id, uint16_t len, uint8_t data[]) {
+  can_ops.lock_rx();
   struct pysim_can_msg *msg = can_msg_rx;
   while (msg != NULL) {
-    if (msg->id == id) {
+    if (msg->fd == fd && msg->id == id) {
       memcpy(msg->data, data, len);
       msg->dlc = len;
       msg->read = 0;
     }
     msg = msg->next;
   }
+  can_ops.unlock_rx();
 
   return 0;
 }
 
-int pysim_can_read_msg(uint32_t id, uint16_t *len, uint8_t data[]) {
+int pysim_can_read_msg(int fd, uint32_t id, uint16_t *len, uint8_t data[]) {
+  if (!can_ops.try_lock_rx()) {
+    return EAGAIN;  /* Busy; leave the message untouched. */
+  }
   struct pysim_can_msg *msg = can_msg_rx;
   while (msg != NULL) {
-    if ((msg->id == id) && (msg->read == 0)) {
+    if ((msg->fd == fd) && (msg->id == id) && (msg->read == 0)) {
       msg->read = 1;
       memcpy(data, msg->data, msg->dlc);
       *len = msg->dlc;
+      can_ops.unlock_rx();
       return 0;
     }
 
     msg = msg->next;
   }
-
+  can_ops.unlock_rx();
   /* No message of desired ID found. */
 
   return ENOMSG;
@@ -111,8 +124,11 @@ int pysim_can_initialize() {
 
   memset(&can_ops, 0, sizeof(struct pysim_can_ops));
 
-  pysim_can_target_register(&can_ops);
-
+  int result = pysim_can_target_register(&can_ops);
+  if (result != 0) {
+    return result;
+  }
+  
   initialized = true;
 
   return 0;
