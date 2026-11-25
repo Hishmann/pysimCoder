@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 #include <string.h>
 
 #include <candev.h>
+#include "candata.h"
 
 
 static void init(python_block *block) {
@@ -59,22 +60,59 @@ static void inout(python_block *block) {
     return;
   }
 
-  uint8_t data[64];
+  int8_t payload[64] = {0};
   uint16_t len;
-  uint32_t ide = block->intPar[0];
+  uint32_t id = (uint32_t)block->intPar[0];
 
-  int result = pysim_can_read_msg(ctx->fd, ide, &len, data);
-  if (result != 0) return;
-  if (len != sizeof(double)) return;  // Unexpected payload size
+  const int *bits = &block->intPar[1];
+  const int *types = &block->intPar[1 + block->nout];
+  unsigned offset = 0;
+  const unsigned capacity = sizeof payload * 8u;
 
-  double value;
-  memcpy(&value, data, sizeof(value));
+  int result = pysim_can_read_msg(ctx->fd, id, &len, payload);
+  if (result != 0) {
+    fprintf(stderr, "CAN receive: Failed read.");
+    return;
+  }
+  if (len > sizeof(payload) || len <= 0) {
+    fprintf(stderr, "CAN receive: unexpected length of CAN frame data is %d\n", len);
+    return;
+  }
 
-  double *y = block->y[0];
-  y[0] = value;
+  for (int i = 0; i < block->nout; ++i) {
+    if (bits[i] <= 0) {
+      fprintf(stderr, "CAN receive: invalid width on output %d\n", i);
+      return;
+    }
+
+    unsigned width = (unsigned)bits[i];
+
+    if (width > capacity - offset) {
+      fprintf(stderr, "CAN receive: payload exceeds %zu bytes\n", sizeof(payload));
+      return;
+    }
+
+    double *y = block->y[i];
+
+    if (y == NULL || !can_get_as_double(payload, len, offset, width, y, (canopen_data_type_t)types[i])) {
+      fprintf(stderr, "CAN receive: cannot encode output %d\n", i);
+      return;
+    }
+
+    offset += width;
+  }
+
+  // double value;
+  // memcpy(&value, payload, sizeof(value));
 }
 
 static void end(python_block *block) {
+  struct can_block_ctx *ctx = block->ptrPar;
+
+  if (ctx == NULL) return;
+
+  free(ctx);
+  block->ptrPar = NULL;
 }
 
 void can_recv(int flag, python_block *block)

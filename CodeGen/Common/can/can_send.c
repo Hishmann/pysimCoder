@@ -23,9 +23,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <candev.h>
-
+#include "candata.h"
 
 static void init(python_block *block) {
   block->ptrPar = NULL;
@@ -57,15 +58,51 @@ static void inout(python_block *block) {
   }
 
   uint32_t ide = block->intPar[0];
-  double *u = block->u[0];
 
-  uint8_t *data = (uint8_t *)u;
-  uint16_t len = sizeof(double);
+  int8_t payload[8] = {0};
 
-  pysim_can_send_msg(ctx->fd, ide, len, data);
+  uint32_t id = (uint32_t)block->intPar[0];
+  const int *bits = &block->intPar[1];
+  const int *types = &block->intPar[1 + block->nin];
+  unsigned offset = 0;
+  const unsigned capacity = sizeof payload * 8u;
+
+  for (int i = 0; i < block->nin; ++i) {
+    if (bits[i] <= 0) {
+      fprintf(stderr, "CAN send: invalid width on input %d\n", i);
+      return;
+    }
+
+    unsigned width = (unsigned)bits[i];
+
+    if (width > capacity - offset) {
+      fprintf(stderr, "CAN send: payload exceeds %d bytes\n", sizeof(payload));
+      return;
+    }
+
+    const double *u = block->u[i];
+
+    if (u == NULL || !can_put_from_double(payload, sizeof payload, offset, width, u[0], (canopen_data_type_t)types[i])) {
+      fprintf(stderr, "CAN send: cannot encode input %d\n", i);
+      return;
+    }
+
+    offset += width;
+  }
+
+  int result = pysim_can_send_msg(ctx->fd, ide, sizeof(payload), (uint8_t *)payload);
+  if (result != 0) fprintf(stderr, "CAN send failed: %d\n", result);
+
+  // pysim_can_send_msg(ctx->fd, ide, len, data);
 }
 
 static void end(python_block *block) {
+  struct can_block_ctx *ctx = block->ptrPar;
+
+  if (ctx == NULL) return;
+
+  free(ctx);
+  block->ptrPar = NULL;
 }
 
 void can_send(int flag, python_block *block)

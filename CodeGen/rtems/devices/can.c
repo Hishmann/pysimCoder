@@ -145,6 +145,12 @@ static int rtems_send_frame(int fd, uint32_t id, uint16_t len, uint8_t data[]) {
 
   frame.header.can_id = id;
   frame.header.dlen = len;
+
+  if (len > CAN_FRAME_STANDARD_DLEN) {
+    frame.header.flags |= CAN_FRAME_FDF;
+    frame.header.flags |= CAN_FRAME_BRS;
+  }
+
   memcpy(frame.data, data, len);
 
   ret = write(fd, &frame, can_framesize(&frame));
